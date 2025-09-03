@@ -31,7 +31,12 @@ git clone https://github.com/yourname/model_profiler.git
 cd model_profiler
 pip install -e .
 ```
+or 
 
+```bash
+pip install torch torchvision prettytable openpyxl torchview graphviz
+# pip install model_profiler
+```
 
 ## 🛠 Usage
 Example Code:
@@ -63,7 +68,7 @@ class SimpleCNN(nn.Module):
 model = SimpleCNN()
 
 # Run profiler
-stats = profile_flops_and_memory_layername(model, input_size=(1, 3, 32, 32), mode="cba")
+stats = profile_flops_and_memory_layername(model, input_size=(1, 3, 32, 32), mode="raw")
 
 # Export to Excel
 export_profile_to_excel(stats, "cnn_profile.xlsx")
@@ -72,7 +77,7 @@ export_profile_to_excel(stats, "cnn_profile.xlsx")
 draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 ```
 
-📊 Excel Output Example
+📊 Output in Command Line
 
 | Layer(Name)       | Input Shape     | Output Shape    | FLOPs (M) | Memory (KB) | FLOP/Byte | Params (K) | Tag            |
 | ----------------- | --------------- | --------------- | --------- | ----------- | --------- | ---------- | -------------- |
@@ -82,22 +87,27 @@ draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 | pool (MaxPool2d)  | (1, 16, 32, 32) | (1, 16, 16, 16) | 0.01      | 4.0         | 0.1       | 0          | Memory-bound ❗ |
 | fc (Linear)       | (1, 4096)       | (1, 10)         | 0.04      | 16.0        | 2.5       | 40         | Balanced       |
 
+📊 Excel Output Example
+[](images/excel_export.png)
+
+📊 Model structure as png file
+[](images/simplecnn_profile.png)
+
 
 📌 Roadmap
 
- Add CUDA memory usage profiling
+- [ ] Add this repository to pip install
 
- Add latency measurement
+- [ ] Add CUDA memory usage profiling
 
- Add visualization in Jupyter Notebook
+- [ ] Add latency measurement
+
+- [ ] Add visualization in Jupyter Notebook
 
 
 
-## Dependencies:
 
-```bash
-pip install torch torchvision prettytable openpyxl torchview graphviz
-```
+## Problems you may encounter
 ⚠️ You must also install the Graphviz system package (see Graphviz Setup)
 
 IF there are any problems in ```draw_model_with_tags```, please check Graphviz Executable.
@@ -115,7 +125,7 @@ make sure the Graphviz executables are on your systems' PATH
 
 The Python ```graphviz``` package is only a binding. It requires the actual Graphviz executables (especially ```dot```) to be installed on your system and available in the PATH.
 
-🔧 Solution
+🔧 Solution: Graphviz Setup
 1. Download Graphviz
 Get the Windows installer from the official site:
 👉 https://graphviz.gitlab.io/_pages/Download/Download_windows.html
@@ -138,6 +148,8 @@ Click OK to save and close.
 (Anaconda Prompt / CMD / PowerShell) so the new PATH takes effect.
 
 
+
 📄 License
 
-MIT License © 2025 Tommy Huang
+MIT License © 2025 Chih-Sheng (Tommy) Huang
+
