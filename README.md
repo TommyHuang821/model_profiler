@@ -35,7 +35,7 @@ or
 
 ```bash
 pip install torch torchvision prettytable openpyxl torchview graphviz
-# pip install model_profiler
+pip install model_profiler
 ```
 
 ## 🛠 Usage 
@@ -144,7 +144,7 @@ draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 
 ## 📌 Roadmap
 
-- [ ] Add this repository to pip install
+- [x] Add this repository to pip install
 
 - [ ] Add CUDA memory usage profiling
 
@@ -192,6 +192,7 @@ Add:
 C:\Program Files\Graphviz\bin
 ```
 Click OK to save and close.
+
 4. Restart your terminal
 (Anaconda Prompt / CMD / PowerShell) so the new PATH takes effect.
 
