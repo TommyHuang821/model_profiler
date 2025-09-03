@@ -38,8 +38,51 @@ pip install torch torchvision prettytable openpyxl torchview graphviz
 # pip install model_profiler
 ```
 
-## 🛠 Usage
-Example Code:
+## 🛠 Usage 
+
+Below is an example of profiling a model with `profile_flops_and_memory_layername`:
+
+```python
+stats = profile_flops_and_memory_layername(
+                model, 
+                input_size=(1, 3, 224, 224),   # Dummy input size for the model
+                threshold_low=10,              # Threshold for detecting memory-bound layers
+                threshold_high=100,            # Threshold for detecting compute-bound layers
+                mode="raw"                     # Profiling mode: "raw", "cba", or "block"
+               )                                     
+```
+Parameters:
+
+- model: The PyTorch model to be analyzed.
+
+- input_size: The shape of the dummy input tensor (batch, channels, height, width).
+
+- threshold_low: If FLOPs-to-Memory ratio < this value, the layer is considered memory-bound.
+
+- threshold_high: If FLOPs-to-Memory ratio > this value, the layer is considered compute-bound.
+
+- mode:
+
+  - "raw" → Show every layer individually (Conv, BN, ReLU, etc.).(defult)
+
+  - "cba" → Combine Conv+BN+Activation into a single CBA block.
+
+  - "block" → Merge into large functional blocks (e.g., backbone, neck, head).
+
+Output:
+
+The function prints a detailed table in the console, and also returns a list (layer_stats) containing:
+
+- Layer name
+- Input shape / Output shape
+- FLOPs
+- Memory usage
+- FLOPs-to-Memory ratio
+- Number of parameters
+- Tag (Memory-bound, Compute-bound, Balanced)
+
+
+Example  (mode='yaw'):
 ```python
 import torch
 import torch.nn as nn
@@ -68,7 +111,9 @@ class SimpleCNN(nn.Module):
 model = SimpleCNN()
 
 # Run profiler
-stats = profile_flops_and_memory_layername(model, input_size=(1, 3, 32, 32), mode="raw")
+stats = profile_flops_and_memory_layername(model, 
+                                          input_size=(1, 3, 32, 32), 
+                                          mode="row")
 
 # Export to Excel
 export_profile_to_excel(stats, "cnn_profile.xlsx")
@@ -87,14 +132,17 @@ draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 | pool (MaxPool2d)  | (1, 16, 32, 32) | (1, 16, 16, 16) | 0.01      | 4.0         | 0.1       | 0          | Memory-bound ❗ |
 | fc (Linear)       | (1, 4096)       | (1, 10)         | 0.04      | 16.0        | 2.5       | 40         | Balanced       |
 
-📊 Excel Output Example
-[](images/excel_export.png)
+📊 Excel Output Example<br>
+<img src="images/excel_export.png" alt="Excel檔案顯示" width="600">
 
-📊 Model structure as png file
-[](images/simplecnn_profile.png)
+<!-- ![ ](images/excel_export.png) -->
+
+📊 Model structure as .png file<br>
+<!-- ![ ](images/simplecnn_profile.png) -->
+<img src="images/simplecnn_profile.png" alt="模型結構圖" width="100">
 
 
-📌 Roadmap
+## 📌 Roadmap
 
 - [ ] Add this repository to pip install
 
@@ -107,7 +155,7 @@ draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 
 
 
-## Problems you may encounter
+## 📌 Problems you may encounter
 ⚠️ You must also install the Graphviz system package (see Graphviz Setup)
 
 IF there are any problems in ```draw_model_with_tags```, please check Graphviz Executable.
@@ -149,7 +197,7 @@ Click OK to save and close.
 
 
 
-📄 License
+## 📄 License
 
 MIT License © 2025 Chih-Sheng (Tommy) Huang
 

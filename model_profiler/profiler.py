@@ -4,8 +4,10 @@ from prettytable import PrettyTable
 
 
 
-def profile_flops_and_memory_layername(model, input_size=(1, 3, 224, 224),
-                                       threshold_low=10, threshold_high=100,
+def profile_flops_and_memory_layername(model, 
+                                       input_size=(1, 3, 224, 224),
+                                       threshold_low=10, 
+                                       threshold_high=100,
                                        mode="raw"):
     """
     分析模型 FLOPs / Memory，輸出以 layer name 為主 (不顯示層級縮排)。
