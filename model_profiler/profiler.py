@@ -8,7 +8,10 @@ def profile_flops_and_memory_layername(model,
                                        input_size=(1, 3, 224, 224),
                                        threshold_low=10, 
                                        threshold_high=100,
-                                       mode="raw"):
+                                       mode="raw",
+                                       skip_bn=True,
+                                       skip_act=True,
+                                       skip_Sequential=True):
     """
     分析模型 FLOPs / Memory，輸出以 layer name 為主 (不顯示層級縮排)。
     支援三種模式：
@@ -138,6 +141,7 @@ def profile_flops_and_memory_layername(model,
             add_stats(name, self, input, output, flops, mem)
         return hook
 
+    
     def default_hook(layer, name):
         def hook(self, input, output):
             mem = (get_numel(input[0]) + get_numel(output)) * 4
@@ -152,11 +156,16 @@ def profile_flops_and_memory_layername(model,
         elif isinstance(layer, nn.Linear):
             hooks.append(layer.register_forward_hook(linear_hook(layer, name)))
         elif isinstance(layer, (nn.BatchNorm2d, nn.BatchNorm1d)):
-            hooks.append(layer.register_forward_hook(bn_hook(layer, name)))
+            if not skip_bn:
+                hooks.append(layer.register_forward_hook(bn_hook(layer, name)))
         elif isinstance(layer, (nn.ReLU, nn.LeakyReLU)):
-            hooks.append(layer.register_forward_hook(relu_hook(layer, name)))
+            if not skip_act:
+                hooks.append(layer.register_forward_hook(relu_hook(layer, name)))
         elif isinstance(layer, (nn.MaxPool2d, nn.AvgPool2d)):
             hooks.append(layer.register_forward_hook(pool_hook(layer, name)))
+        elif isinstance(layer, (nn.Sequential)):
+            if not skip_Sequential:
+                hooks.append(layer.register_forward_hook(default_hook(layer, name)))
         else:
             hooks.append(layer.register_forward_hook(default_hook(layer, name)))
 

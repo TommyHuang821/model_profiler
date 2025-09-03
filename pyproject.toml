@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "torch-model-profiler"
-version = "0.1.0"
+version = "0.1.1"
 description = "A PyTorch model profiling tool for FLOPs, memory, and visualization."
 readme = "README.md"
 license = { text = "MIT" }
@@ -34,3 +34,5 @@ packages = ["model_profiler"]
 
 [project.urls]
 Homepage = "https://github.com/TommyHuang821/model_profiler"
+Repository = "https://github.com/TommyHuang821/model_profiler"
+Issues = "https://github.com/TommyHuang821/model_profiler/issues"

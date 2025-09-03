@@ -1,4 +1,4 @@
-# 📊 model_profiler
+# 📊 torch-model-profiler
 
 A lightweight PyTorch model profiler that reports **FLOPs**, **memory usage**, **parameters**, **input/output shapes**, and automatically exports results to **Excel** with colored tags.
 
@@ -39,8 +39,13 @@ pip install model_profiler
 ```
 
 ## 🛠 Usage 
+critial function in this module:
+1. `profile_flops_and_memory_layername`
+2. `estimate_inference_time`
+3. `export_profile_to_excel_withinferencetime`
 
-Below is an example of profiling a model with `profile_flops_and_memory_layername`:
+
+### Below is an example of profiling a model with `profile_flops_and_memory_layername`:
 
 ```python
 stats = profile_flops_and_memory_layername(
@@ -53,21 +58,27 @@ stats = profile_flops_and_memory_layername(
 ```
 Parameters:
 
-- model: The PyTorch model to be analyzed.
+- ```model```: The PyTorch model to be analyzed.
 
-- input_size: The shape of the dummy input tensor (batch, channels, height, width).
+- ```input_size```: The shape of the dummy input tensor (batch, channels, height, width).
 
-- threshold_low: If FLOPs-to-Memory ratio < this value, the layer is considered memory-bound.
+- ```threshold_low```: If FLOPs-to-Memory ratio < this value, the layer is considered memory-bound.
 
-- threshold_high: If FLOPs-to-Memory ratio > this value, the layer is considered compute-bound.
+- ```threshold_high```: If FLOPs-to-Memory ratio > this value, the layer is considered compute-bound.
 
-- mode:
+- ```mode```: defult:raw
 
   - "raw" → Show every layer individually (Conv, BN, ReLU, etc.).(defult)
 
   - "cba" → Combine Conv+BN+Activation into a single CBA block.
 
   - "block" → Merge into large functional blocks (e.g., backbone, neck, head).
+  
+- ```skip_bn```: profiling with/without BatchNorm, defult:True
+
+- ```skip_act```: profiling with/without Activation  function, defult:True
+
+- ```skip_Sequential```: profiling with/without Sequential, defult:True
 
 Output:
 
@@ -122,7 +133,7 @@ export_profile_to_excel(stats, "cnn_profile.xlsx")
 draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 ```
 
-📊 Output in Command Line
+📊 Output in console
 
 | Layer(Name)       | Input Shape     | Output Shape    | FLOPs (M) | Memory (KB) | FLOP/Byte | Params (K) | Tag            |
 | ----------------- | --------------- | --------------- | --------- | ----------- | --------- | ---------- | -------------- |
@@ -142,13 +153,179 @@ draw_model_with_tags(model, (1, 3, 32, 32), stats, filename="cnn_graph")
 <img src="images/simplecnn_profile.png" alt="模型結構圖" width="100">
 
 
+
+### Below is an example of profiling a model with `estimate_inference_time` :
+
+```python
+latency = estimate_inference_time(stats, 
+                                  compute_tops=1,   # 1-TOPS NPU
+                                  mem_bw_gbs=1,     # 1 GB/s DRAM
+                                  sram_size_mb=1)   # 1MB SRAM                              
+```
+Parameters
+
+`stats` (list): Output from `profile_flops_and_memory_layername`. Contains per-layer FLOPs, memory usage, and other profiling data.
+
+`compute_tops` (float): Peak compute performance of the target accelerator, in TOPS (Tera Operations Per Second).
+Example: 100 = 100 TOPS = 100e12 ops/sec.
+
+`mem_bw_gbs` (float): External memory (DRAM) bandwidth, in GB/s.Example: 200 = 200 GB/s.
+
+`sram_size_mb` (float): On-chip SRAM buffer size, in MB.Determines whether a layer can fit entirely on-chip (fast access) or must use DRAM (slower).
+
+Returns
+
+`'latency` (float): Estimated total inference latency (in milliseconds) for the given model on the target hardware.
+The estimation considers:
+- Compute-bound time = FLOPs / (compute_tops × 1e12)
+- Memory-bound time = Memory Bytes / (mem_bw_gbs × 1e9)
+- SRAM vs DRAM penalty (if working set > SRAM size).
+
+
+### Below is an example of profiling a model with  `export_profile_to_excel_withinferencetime`:
+
+```python
+export_profile_to_excel_withinferencetime(stats, 
+                                          filename="estimatetime_profile_report.xlsx",
+                                          compute_tops=1, 
+                                          mem_bw_gbs=1, 
+                                          sram_size_mb=1)
+```
+Parameters
+
+`stats` (list): Profiling results from profile_flops_and_memory_layername.
+
+`filename` (str): Path to the output Excel file. Example: "report.xlsx".
+
+`compute_tops` (float): Target hardware compute capability in TOPS (same as above).
+
+`mem_bw_gbs` (float): DRAM bandwidth in GB/s (same as above).
+
+`sram_size_mb` (float): SRAM buffer size in MB (same as above).
+
+
+*Excel Output*
+
+This function creates an Excel file with:
+
+- Profile Report sheet
+
+  - Layer name
+  - Input / Output shape
+  - FLOPs
+  - Memory usage
+  - Params
+  - Estimated latency (ms) for each layer
+  - Bound type (Memory-bound / Compute-bound)
+  - Row colored (red = memory-bound, green = compute-bound, gray = balanced).
+
+- Statistics sheet
+  - Count of layers by bound type
+  - Total FLOPs, Params, Memory
+  - Total estimated inference latency.
+
+Example  (mode='yaw'):
+
+```python
+import torch
+import torch.nn as nn
+from model_profiler import profile_flops_and_memory_layername
+from model_profiler import estimate_inference_time, export_profile_to_excel_withinferencetime
+
+# === bulid a simple CNN model ===
+class CBA(nn.Module):
+    '''
+    conv+BN+LeakyReLU
+    '''
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 k_size,
+                 padding,
+                 stride,
+                 bias=False,
+                 dilation=1):
+        super(CBA, self).__init__()
+
+        self.cba_unit = nn.Sequential(
+                        nn.Conv2d(in_channels,
+                                out_channels,
+                                k_size,
+                                padding=padding,
+                                stride=stride,
+                                bias=bias,
+                                dilation=dilation), 
+                        nn.BatchNorm2d(out_channels), 
+                        nn.LeakyReLU()
+                        )
+
+    def forward(self, inputs):
+        outputs = self.cba_unit(inputs)
+        return outputs
+    
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU()
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
+        self.conv3 = CBA(in_channels=32,
+                        out_channels=64,
+                        k_size=3,
+                        padding=1,
+                        stride=2)
+
+        self.fc = nn.Linear(64 * 8 * 8, 10)  # suppose image size is 32x32
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+if __name__ == "__main__":
+    model = SimpleCNN()
+
+    # Profile model
+    stats = profile_flops_and_memory_layername(
+        model,
+        input_size=(1, 3, 32, 32),
+        mode="raw",   # raw / cba / block
+        skip_bn=True,
+        skip_act=True,
+        skip_Sequential=True
+    )
+
+    # 假設一個 1 TOPS NPU + 1 GB/s DRAM + 1MB SRAM
+    latency = estimate_inference_time(stats, compute_tops=1, mem_bw_gbs=1, sram_size_mb=1)
+    export_profile_to_excel_withinferencetime(stats, filename="estimatetime_profile_report.xlsx",
+                                             compute_tops=1, mem_bw_gbs=1, sram_size_mb=1)
+```
+
+
+
+
+
+
+
+
+
 ## 📌 Roadmap
 
 - [x] Add this repository to pip install
 
-- [ ] Add CUDA memory usage profiling
-
-- [ ] Add latency measurement
+- [X] Add latency measurement
 
 - [ ] Add visualization in Jupyter Notebook
 

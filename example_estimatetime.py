@@ -1,13 +1,9 @@
 import torch
 import torch.nn as nn
 from model_profiler import profile_flops_and_memory_layername
-from model_profiler import export_profile_to_excel
-from model_profiler import draw_model_with_tags
-
-
+from model_profiler import estimate_inference_time, export_profile_to_excel_withinferencetime
 
 # === bulid a simple CNN model ===
-
 class CBA(nn.Module):
     '''
     conv+BN+LeakyReLU
@@ -82,10 +78,7 @@ if __name__ == "__main__":
         skip_Sequential=True
     )
 
-    # export Excel
-    export_profile_to_excel(stats, "simplecnn_profile.xlsx")
-
-    # draw a model structure as png file
-    import os 
-    os.environ["PATH"] +=os.pathsep+r"C:\Program Files\Graphviz\bin"
-    draw_model_with_tags(model, (1, 3, 32, 32), "simplecnn_profile")
+    # 假設一個 1 TOPS NPU + 1 GB/s DRAM + 1MB SRAM
+    latency = estimate_inference_time(stats, compute_tops=1, mem_bw_gbs=1, sram_size_mb=1)
+    export_profile_to_excel_withinferencetime(stats, filename="estimatetime_profile_report.xlsx",
+                                             compute_tops=1, mem_bw_gbs=1, sram_size_mb=1)
